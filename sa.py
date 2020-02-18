@@ -2,10 +2,15 @@
 
 from itertools import zip_longest, islice
 import numpy as np
-from scipy.sparse import csc_matrix, coo_matrix
+from scipy.sparse import csc_matrix, coo_matrix, csr_matrix
 import numpy.testing as npt
 import time
-# from numba import njit,
+import numba
+import pandas as pd
+
+@numba.njit(fastmath=True)
+def numba_unique(arr):
+    return np.array(list(set(arr)))
 
 def to_int_keys_best(l):
     """
@@ -14,39 +19,20 @@ def to_int_keys_best(l):
     """
     ls = list(dict.fromkeys(l))
     ls.sort()
-    index = {v: i for i, v in enumerate(ls)}
-    return [index[v] for v in l]
+    index = {k: v for v, k in enumerate(ls)}
+    return [index[k] for k in l]
 
 
 def to_int_keys_np(l):
     indices = np.unique(l, return_inverse=True)[1]
     return indices
 
-def to_int_keys_sparse(x):
-    print(x.shape)
-    print(x.min(), x.max())
-    start = time.time()
-    sparse_p = coo_matrix(
-        (
-            np.ones(x.shape[0], dtype=np.uint64),
-            (np.zeros(x.shape[0], dtype=np.uint64), x),
-        ),
-        # shape=(x.shape[0], 1),
-        dtype=bool,
-    ).tocsc()
-    print("csc1", time.time()-start)
 
-    start = time.time()
-    sparse_c = sparse_p.count_nonzero()
-    print("count_nonzero", time.time()-start)
+def to_int_keys_custom(x):
+    sorted_x_unique_series = pd.Series(np.sort(numba_unique(x)))
+    mask = pd.Series(sorted_x_unique_series.index.values, index=sorted_x_unique_series)
+    return mask.loc[x].values
 
-    start = time.time()
-    sparse_p2 = coo_matrix(
-        (np.arange(sparse_c, dtype=np.uint64) + 1, sparse_p.nonzero()), dtype=np.uint64
-    ).tocsc()
-    print("csc2", time.time()-start)
-
-    return sparse_p2[0, x].data - 1
 
 def suffix_array_best(s):
     """
@@ -74,12 +60,12 @@ def suffix_array_np(s):
     n = len(s)
     k = 1
     # print(to_int_keys_best(s))
-    line = to_int_keys_np(s)
+    # line = to_int_keys_np(s)
     # print(line)
     # print(to_int_keys_sparse(s))
-    # line = to_int_keys_sparse(s)
+    line = to_int_keys_custom(s)
     # print("HERE")
-    # test = to_int_keys_np_2(s)
+    # test = to_int_keys_custom(s)
     # npt.assert_almost_equal(line, test)
     tmp_line = np.ones(n, dtype=np.int64)
     # print(time.time() - start)
@@ -97,9 +83,9 @@ def suffix_array_np(s):
         # line[:] = to_int_keys_best(line)
         # print(to_int_keys_best(line))
         # print(to_int_keys_sparse(line))
-        line[:] = to_int_keys_np(line)
+        # line[:] = to_int_keys_np(line)
         # print(line)
-        # line[:] = to_int_keys_sparse(line)
+        line[:] = to_int_keys_custom(line)
         # print(line)
         # npt.assert_almost_equal(line, test)
         # print(time.time() - start)
@@ -143,34 +129,36 @@ def kasai(s, sa=None):
 
 if __name__ == '__main__':
     word = 'one$banana$phone$'
-    # word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
+    word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
     # word = "ABABBAB"
     # word = "banana"
-    sarray = suffix_array_best(word)
+    # sarray = suffix_array_best(word)
     # print(to_int_keys_np(np.array(list(word))))
-    print(sarray)
+    # print(sarray)
     # print(suffix_array_np(np.array(list(word))))
-    for i in np.argsort(sarray):
-        print(i, word[i:])
-    print(kasai(word, sarray))
-    exit()
+    # for i in np.argsort(sarray):
+    #     print(i, word[i:])
+    # print(kasai(word, sarray))
+    # exit()
 
     # print(suffix_array_best([2,1,3,1,3,1]))
     # print(suffix_array_best(np.array([2,1,3,1,3,1])))
-    seq_length = 10
-    # n_seqs = 1_000_000
-    n_seqs = 1_000_000
-    inp = np.random.randint(1000, size=seq_length*n_seqs)
+    # for n_seqs in [1000, 10_000, 100_000, 1_000_000, 10_000_000]:
+    for n_seqs in [10_000_000]:
+        seq_length = 10
+        # n_seqs = 1_000_000
+        # n_seqs = 10_000_000
+        inp = np.random.randint(1000, size=seq_length*n_seqs)
 
-    start = time.time()
-    # sa = suffix_array_best(inp)
-    print("suffix_array_best", time.time() - start)
+        start = time.time()
+        # sa = suffix_array_best(inp)
+        print("suffix_array_best", time.time() - start)
 
-    start = time.time()
-    sa_np = suffix_array_np(inp)
-    print("sparse", time.time() - start)
+        start = time.time()
+        sa_np = suffix_array_np(inp)
+        print("sparse", time.time() - start)
 
-    # npt.assert_almost_equal(np.array(sa), sa_np)
+        npt.assert_almost_equal(np.array(sa), sa_np)
 
-    lcp_array = kasai(inp, sa_np)
+        # lcp_array = kasai(inp, sa_np)
 
