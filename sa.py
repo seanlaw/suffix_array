@@ -223,7 +223,7 @@ if __name__ == '__main__':
         # npt.assert_almost_equal(np.array(sa), sa_opt)
 
         start = time.time()
-        lcp_array = kasai_numba(inp, sa_np)
+        lcp_array = kasai_numba(inp, sa_np, inverse_array_np(sa_np))
         print("lcp", time.time() - start)
 
         start = time.time()
