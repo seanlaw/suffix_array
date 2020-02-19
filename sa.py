@@ -2,7 +2,6 @@
 
 from itertools import zip_longest, islice
 import numpy as np
-from scipy.sparse import csc_matrix, coo_matrix, csr_matrix
 import numpy.testing as npt
 import time
 import numba
@@ -182,23 +181,23 @@ if __name__ == '__main__':
         print(i, word[i:])
     lcp_array = kasai(word, sarray)
     print(lcp_array)
-    lcp_array = kasai_numba(word, sarray, inverse_array_np(sarray))
-    print(lcp_array)
+    lcp_array_numba = kasai_numba(word, sarray, inverse_array_np(sarray))
+    print(lcp_array_numba)
     overlap = 2
-    overlap_array = np.argwhere(lcp_array >= overlap).flatten()
+    overlap_array = np.argwhere(lcp_array_numba >= overlap).flatten()
     print(overlap_array)
     runs_array = get_runs(overlap_array)
     min_count = 0
     for start_inx, stop_inx in runs_array:
         if stop_inx - start_inx > min_count:
-            min_overlap = lcp_array[start_inx:stop_inx].min()
+            min_overlap = lcp_array_numba[start_inx:stop_inx].min()
             print("min overlap", min_overlap)
             for i in range(start_inx, stop_inx + 1):
                 word_start_inx = inverse_array_np(sarray)[i]
                 word_stop_inx = word_start_inx + min_overlap
                 print(i, word[word_start_inx:word_stop_inx])
             print()
-    exit()
+    # exit()
 
     # print(suffix_array_best([2,1,3,1,3,1]))
     # print(suffix_array_best(np.array([2,1,3,1,3,1])))
@@ -224,7 +223,7 @@ if __name__ == '__main__':
         # npt.assert_almost_equal(np.array(sa), sa_opt)
 
         start = time.time()
-        lcp_array = kasai(inp, sa_np)
+        lcp_array = kasai_numba(inp, sa_np)
         print("lcp", time.time() - start)
 
         start = time.time()
