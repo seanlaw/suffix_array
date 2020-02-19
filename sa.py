@@ -131,6 +131,31 @@ def kasai(s, sa=None):
     return np.array(lcp)
 
 
+@numba.njit()
+def kasai_numba(s, sa, pos, stop=None):
+    """
+    constructs the lcp array
+    O(n)
+    s: string
+    sa: suffix array
+    from https://www.hackerrank.com/topics/lcp-array
+    """
+    n = s.shape[0]
+    k = 0
+    lcp = np.zeros(n, dtype=np.int64)
+    for i in numba.prange(n):
+        if sa[i] == n - 1:
+            k = 0
+            continue
+        j = pos[sa[i] + 1]
+        while i + k < n and j + k < n and s[i + k] == s[j + k]:
+            k += 1
+        lcp[sa[i]] = k
+        if k:
+            k -= 1
+    return lcp
+
+
 def get_runs(x, min_run=0):
     r = np.full(len(x),2)
     d = np.diff(x)==1
@@ -142,19 +167,22 @@ def get_runs(x, min_run=0):
     return out
 
 if __name__ == '__main__':
-    word = 'one$banana$phone$bandana$'
+    word = 'one$banana$phone$'
     # word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
     # word = 'mississippi$'
     # word = "ABABBAB"
     # word = "banana"
+    word = np.array(list(word))
     # sarray = suffix_array_best(word)
-    sarray = suffix_array_np(np.array(list(word)))
+    sarray = suffix_array_np(word)
     # print(sarray)
     # print(inverse_array(sarray))
     # print(suffix_array_np(np.array(list(word))))
     for i in inverse_array_np(sarray):
         print(i, word[i:])
     lcp_array = kasai(word, sarray)
+    print(lcp_array)
+    lcp_array = kasai_numba(word, sarray, inverse_array_np(sarray))
     print(lcp_array)
     overlap = 2
     overlap_array = np.argwhere(lcp_array >= overlap).flatten()
