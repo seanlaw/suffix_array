@@ -130,7 +130,7 @@ def kasai(s, sa=None):
     return np.array(lcp)
 
 
-@numba.njit()
+@numba.njit(fastmath=True)
 def kasai_numba(s, sa, pos, stop=None):
     """
     constructs the lcp array
@@ -145,13 +145,13 @@ def kasai_numba(s, sa, pos, stop=None):
     for i in numba.prange(n):
         if sa[i] == n - 1:
             k = 0
-            continue
-        j = pos[sa[i] + 1]
-        while i + k < n and j + k < n and s[i + k] == s[j + k]:
-            k += 1
-        lcp[sa[i]] = k
-        if k:
-            k -= 1
+        else:
+            j = pos[sa[i] + 1]
+            while i + k < n and j + k < n and s[i + k] == s[j + k]:
+                k = k + 1
+            lcp[sa[i]] = k
+            if k > 0:
+                k = k - 1
     return lcp
 
 
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     word = np.array(list(word))
     # sarray = suffix_array_best(word)
     sarray = suffix_array_np(word)
-    # print(sarray)
+    print("sarray", sarray)
     # print(inverse_array(sarray))
     # print(suffix_array_np(np.array(list(word))))
     for i in inverse_array_np(sarray):
@@ -183,6 +183,7 @@ if __name__ == '__main__':
     print(lcp_array)
     lcp_array_numba = kasai_numba(word, sarray, inverse_array_np(sarray))
     print(lcp_array_numba)
+    # exit()
     overlap = 2
     overlap_array = np.argwhere(lcp_array_numba >= overlap).flatten()
     print(overlap_array)
@@ -203,7 +204,7 @@ if __name__ == '__main__':
     # print(suffix_array_best(np.array([2,1,3,1,3,1])))
     # for n_seqs in [1000, 10_000, 100_000, 1_000_000, 10_000_000]:
     # for n_seqs in [10_000_000, 20_000_000, 30_000_000, 40_000_000]:
-    for n_seqs in [20_000_000]:
+    for n_seqs in [30_000_000]:
         seq_length = 10
         inp = np.random.randint(1000, size=seq_length*n_seqs)
 
@@ -221,6 +222,10 @@ if __name__ == '__main__':
 
         # npt.assert_almost_equal(np.array(sa), sa_np)
         # npt.assert_almost_equal(np.array(sa), sa_opt)
+
+        start = time.time()
+        lcp_array = kasai(inp, sa_np)
+        print("lcp", time.time() - start)
 
         start = time.time()
         lcp_array = kasai_numba(inp, sa_np, inverse_array_np(sa_np))
