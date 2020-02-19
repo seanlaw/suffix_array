@@ -28,7 +28,7 @@ def to_int_keys_np(l):
     return indices
 
 
-def to_int_keys_custom(x):
+def to_int_keys_optimized(x):
     sorted_x_unique_series = pd.Series(np.sort(numba_unique(x)))
     mask = pd.Series(sorted_x_unique_series.index.values, index=sorted_x_unique_series)
     return mask.loc[x].values
@@ -49,6 +49,7 @@ def suffix_array_best(s):
              zip_longest(line, islice(line, k, None),
                          fillvalue=-1)])
         k <<= 1
+
     return line
 
 def suffix_array_np(s):
@@ -56,39 +57,36 @@ def suffix_array_np(s):
     suffix array of s
     O(n * log(n)^2)
     """
-    # start = time.time()
     n = len(s)
     k = 1
-    # print(to_int_keys_best(s))
-    # line = to_int_keys_np(s)
-    # print(line)
-    # print(to_int_keys_sparse(s))
-    line = to_int_keys_custom(s)
-    # print("HERE")
-    # test = to_int_keys_custom(s)
-    # npt.assert_almost_equal(line, test)
+    line = to_int_keys_np(s)
     tmp_line = np.ones(n, dtype=np.int64)
-    # print(time.time() - start)
     while max(line) < n - 1:
-        # start = time.time()
         tmp_line[:] = -1
         tmp_line[:-k] = line[k:]
 
-        # line[:] = to_int_keys_np((n + 1) * line + tmp_line + 1)
         line[:] = (n + 1) * line + tmp_line + 1
-        # print("here", time.time() - start)
+        line[:] = to_int_keys_np(line)
 
-        # start = time.time()
-        # test = to_int_keys_np_2(line)
-        # line[:] = to_int_keys_best(line)
-        # print(to_int_keys_best(line))
-        # print(to_int_keys_sparse(line))
-        # line[:] = to_int_keys_np(line)
-        # print(line)
-        line[:] = to_int_keys_custom(line)
-        # print(line)
-        # npt.assert_almost_equal(line, test)
-        # print(time.time() - start)
+        k <<= 1
+        
+    return line
+
+def suffix_array_optimized(s):
+    """
+    suffix array of s
+    O(n * log(n)^2)
+    """
+    n = len(s)
+    k = 1    
+    line = to_int_keys_optimized(s)
+    tmp_line = np.ones(n, dtype=np.int64)
+    while max(line) < n - 1:
+        tmp_line[:] = -1
+        tmp_line[:-k] = line[k:]
+
+        line[:] = (n + 1) * line + tmp_line + 1
+        line[:] = to_int_keys_optimized(line)
 
         k <<= 1
         
@@ -100,6 +98,11 @@ def inverse_array(l):
     for i in range(n):
         ans[l[i]] = i
     return ans
+
+
+def inverse_array_np(l):
+    return np.argsort(l)
+
 
 def kasai(s, sa=None):
     """
@@ -125,40 +128,80 @@ def kasai(s, sa=None):
         lcp[sa[i]] = k
         if k:
             k -= 1
-    return lcp
+    return np.array(lcp)
+
+
+def get_runs(x, min_run=0):
+    r = np.full(len(x),2)
+    d = np.diff(x)==1
+    r[1:]-=d
+    r[:-1]-=d 
+    out = np.repeat(x, r).reshape(-1,2)
+    out = out[(out[:, 1] - out[:,0]) >= min_run]
+    out[:, 1] += 1
+    return out
 
 if __name__ == '__main__':
-    word = 'one$banana$phone$'
-    word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
+    word = 'one$banana$phone$bandana$'
+    # word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
+    # word = 'mississippi$'
     # word = "ABABBAB"
     # word = "banana"
     # sarray = suffix_array_best(word)
-    # print(to_int_keys_np(np.array(list(word))))
+    sarray = suffix_array_np(np.array(list(word)))
     # print(sarray)
+    # print(inverse_array(sarray))
     # print(suffix_array_np(np.array(list(word))))
-    # for i in np.argsort(sarray):
-    #     print(i, word[i:])
-    # print(kasai(word, sarray))
-    # exit()
+    for i in inverse_array_np(sarray):
+        print(i, word[i:])
+    lcp_array = kasai(word, sarray)
+    print(lcp_array)
+    overlap = 2
+    overlap_array = np.argwhere(lcp_array >= overlap).flatten()
+    print(overlap_array)
+    runs_array = get_runs(overlap_array)
+    min_count = 0
+    for start_inx, stop_inx in runs_array:
+        if stop_inx - start_inx > min_count:
+            min_overlap = lcp_array[start_inx:stop_inx].min()
+            print("min overlap", min_overlap)
+            for i in range(start_inx, stop_inx + 1):
+                word_start_inx = inverse_array_np(sarray)[i]
+                word_stop_inx = word_start_inx + min_overlap
+                print(i, word[word_start_inx:word_stop_inx])
+            print()
+    exit()
 
     # print(suffix_array_best([2,1,3,1,3,1]))
     # print(suffix_array_best(np.array([2,1,3,1,3,1])))
     # for n_seqs in [1000, 10_000, 100_000, 1_000_000, 10_000_000]:
-    for n_seqs in [10_000_000]:
+    # for n_seqs in [10_000_000, 20_000_000, 30_000_000, 40_000_000]:
+    for n_seqs in [20_000_000]:
         seq_length = 10
-        # n_seqs = 1_000_000
-        # n_seqs = 10_000_000
         inp = np.random.randint(1000, size=seq_length*n_seqs)
 
-        start = time.time()
-        # sa = suffix_array_best(inp)
-        print("suffix_array_best", time.time() - start)
+        # start = time.time()
+        # # sa = suffix_array_best(inp)
+        # print("suffix_array_best", seq_length*n_seqs, time.time() - start)
 
         start = time.time()
         sa_np = suffix_array_np(inp)
-        print("sparse", time.time() - start)
+        print("suffix_array_np", seq_length*n_seqs, time.time() - start)
 
-        npt.assert_almost_equal(np.array(sa), sa_np)
+        # start = time.time()
+        # sa_opt = suffix_array_optimized(inp)
+        # print("suffix_array_optimized", seq_length*n_seqs, time.time() - start)
 
-        # lcp_array = kasai(inp, sa_np)
+        # npt.assert_almost_equal(np.array(sa), sa_np)
+        # npt.assert_almost_equal(np.array(sa), sa_opt)
+
+        start = time.time()
+        lcp_array = kasai(inp, sa_np)
+        print("lcp", time.time() - start)
+
+        start = time.time()
+        overlap = 2
+        overlapping_indices = np.argwhere(lcp_array > overlap).flatten()
+        runs_array = get_runs(overlapping_indices)
+        print("index start/stop", time.time() - start)
 
