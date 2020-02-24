@@ -167,6 +167,7 @@ def get_runs(x, min_run=0):
 
 if __name__ == '__main__':
     word = 'one$banana$phone$'
+    word = 'a$banana$and$a$bandana$'
     # word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
     # word = 'mississippi$'
     # word = "ABABBAB"
@@ -198,7 +199,7 @@ if __name__ == '__main__':
                 word_stop_inx = word_start_inx + min_overlap
                 print(i, word[word_start_inx:word_stop_inx])
             print()
-    # exit()
+    exit()
 
     # print(suffix_array_best([2,1,3,1,3,1]))
     # print(suffix_array_best(np.array([2,1,3,1,3,1])))
