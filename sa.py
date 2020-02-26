@@ -147,7 +147,7 @@ def kasai_numba(s, sa, pos, stop=None):
             k = 0
         else:
             j = pos[sa[i] + 1]
-            while i + k < n and j + k < n and s[i + k] == s[j + k]:
+            while i + k < n and j + k < n and s[i + k] != stop and s[j + k] != stop and s[i + k] == s[j + k]:
                 k = k + 1
             lcp[sa[i]] = k
             if k > 0:
@@ -168,7 +168,7 @@ def get_runs(x, min_run=0):
 if __name__ == '__main__':
     word = 'one$banana$phone$'
     word = 'a$banana$and$a$bandana$'
-    # word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
+    #word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
     # word = 'mississippi$'
     # word = "ABABBAB"
     # word = "banana"
@@ -182,7 +182,7 @@ if __name__ == '__main__':
         print(i, word[i:])
     lcp_array = kasai(word, sarray)
     print(lcp_array)
-    lcp_array_numba = kasai_numba(word, sarray, inverse_array_np(sarray))
+    lcp_array_numba = kasai_numba(word, sarray, inverse_array_np(sarray), '$')
     print(lcp_array_numba)
     # exit()
     overlap = 2
