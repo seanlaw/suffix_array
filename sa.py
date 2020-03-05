@@ -6,6 +6,7 @@ import numpy.testing as npt
 import time
 import numba
 import pandas as pd
+import pydivsufsort
 
 @numba.njit(fastmath=True)
 def numba_unique(arr):
@@ -49,7 +50,7 @@ def suffix_array_best(s):
                          fillvalue=-1)])
         k <<= 1
 
-    return line
+    return inverse_array_np(line)
 
 def suffix_array_np(s):
     """
@@ -69,7 +70,7 @@ def suffix_array_np(s):
 
         k <<= 1
         
-    return line
+    return inverse_array_np(line)
 
 def suffix_array_optimized(s):
     """
@@ -116,7 +117,8 @@ def kasai(s, sa=None):
     n = len(s)
     k = 0
     lcp = [0] * n
-    pos = inverse_array(sa)
+    pos = sa
+    sa = inverse_array(sa)
     for i in range(n):
         if sa[i] == n - 1:
             k = 0
@@ -131,7 +133,7 @@ def kasai(s, sa=None):
 
 
 @numba.njit(fastmath=True)
-def kasai_numba(s, sa, pos, stop=None):
+def kasai_numba(s, sa, stop=None):
     """
     constructs the lcp array
     O(n)
@@ -142,6 +144,8 @@ def kasai_numba(s, sa, pos, stop=None):
     n = s.shape[0]
     k = 0
     lcp = np.zeros(n, dtype=np.int64)
+    pos = sa
+    sa = np.argsort(sa)
     for i in numba.prange(n):
         if sa[i] == n - 1:
             k = 0
@@ -165,26 +169,52 @@ def get_runs(x, min_run=0):
     out[:, 1] += 1
     return out
 
+
+def get_dtype(n):
+    if n < np.iinfo(np.uint8).max:
+        dtype = np.uint8
+    elif n < np.iinfo(np.uint16).max:
+        dtype = np.uint16
+    elif n < np.iinfo(np.uint32).max:
+        dtype = np.uint32
+    else:
+        dtype = np.uint64
+    
+    return dtype
+
+
+
 if __name__ == '__main__':
     word = 'one$banana$phone$'
     word = 'a$banana$and$a$bandana$'
-    #word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
+    # word = np.array([6, 5, 3, 0, 2, 1, 5, 1, 5, 1, 0, 7, 4, 6, 5, 3, 0])
     # word = 'mississippi$'
     # word = "ABABBAB"
     # word = "banana"
+    # word = "banana$"
     word = np.array(list(word))
     # sarray = suffix_array_best(word)
     sarray = suffix_array_np(word)
-    print("sarray", sarray)
-    # print(inverse_array(sarray))
+    print()
+    print("Suffix Array")
+    print(sarray)
+    # print(inverse_array_np(sarray))
     # print(suffix_array_np(np.array(list(word))))
-    for i in inverse_array_np(sarray):
+
+    for i in sarray:
         print(i, word[i:])
+    
+    print()
+    print("LCP Array")
     lcp_array = kasai(word, sarray)
     print(lcp_array)
-    lcp_array_numba = kasai_numba(word, sarray, inverse_array_np(sarray), '$')
+    lcp_array_numba = kasai_numba(word, sarray)#, '$')
     print(lcp_array_numba)
-    # exit()
+    lcp_array_numba = kasai_numba(word, sarray, '$')
+    print(lcp_array_numba)
+    
+    print()
+    print("Overlap")
     overlap = 2
     overlap_array = np.argwhere(lcp_array_numba >= overlap).flatten()
     print(overlap_array)
@@ -195,19 +225,24 @@ if __name__ == '__main__':
             min_overlap = lcp_array_numba[start_inx:stop_inx].min()
             print("min overlap", min_overlap)
             for i in range(start_inx, stop_inx + 1):
-                word_start_inx = inverse_array_np(sarray)[i]
+                word_start_inx = sarray[i]
                 word_stop_inx = word_start_inx + min_overlap
                 print(i, word[word_start_inx:word_stop_inx])
             print()
-    exit()
+    # exit()
 
+    print()
+    print("Large Input Array")
     # print(suffix_array_best([2,1,3,1,3,1]))
     # print(suffix_array_best(np.array([2,1,3,1,3,1])))
     # for n_seqs in [1000, 10_000, 100_000, 1_000_000, 10_000_000]:
     # for n_seqs in [10_000_000, 20_000_000, 30_000_000, 40_000_000]:
     for n_seqs in [30_000_000]:
+        np.random.seed(7)
         seq_length = 10
-        inp = np.random.randint(1000, size=seq_length*n_seqs)
+        n_states = 1000
+        dtype = get_dtype(n_states)
+        inp = np.random.randint(n_states, size=seq_length*n_seqs, dtype=dtype)
 
         # start = time.time()
         # # sa = suffix_array_best(inp)
@@ -224,12 +259,12 @@ if __name__ == '__main__':
         # npt.assert_almost_equal(np.array(sa), sa_np)
         # npt.assert_almost_equal(np.array(sa), sa_opt)
 
-        start = time.time()
-        lcp_array = kasai(inp, sa_np)
-        print("lcp", time.time() - start)
+        #start = time.time()
+        #lcp_array = kasai(inp, sa_np)
+        #print("lcp", time.time() - start)
 
         start = time.time()
-        lcp_array = kasai_numba(inp, sa_np, inverse_array_np(sa_np))
+        lcp_array = kasai_numba(inp, sa_np)
         print("lcp", time.time() - start)
 
         start = time.time()
