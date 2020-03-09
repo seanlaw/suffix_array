@@ -115,7 +115,7 @@ def kasai(s, sa=None):
 
 
 @numba.njit(fastmath=True)
-def kasai_numba(s, sa, stop=None):
+def kasai_numba(s, sa):
     """
     constructs the lcp array
     O(n)
@@ -128,7 +128,7 @@ def kasai_numba(s, sa, stop=None):
     lcp = np.zeros(n, dtype=np.int64)
     pos = sa
     sa = np.argsort(sa)
-    for i in numba.prange(n):
+    for i in range(n):
         if sa[i] == n - 1:
             k = 0
         else:
@@ -136,8 +136,6 @@ def kasai_numba(s, sa, stop=None):
             while (
                 i + k < n
                 and j + k < n
-                and s[i + k] != stop
-                and s[j + k] != stop
                 and s[i + k] == s[j + k]
             ):
                 k = k + 1
@@ -235,9 +233,6 @@ if __name__ == "__main__":
     print(lcp_array)
     lcp_array_numba = kasai_numba(word, sarray)
     print(lcp_array_numba)
-    # print(distance_to_sentinel(word, '$'))
-    # lcp_array_numba = kasai_numba(word, sarray, '$')
-    # print(lcp_array_numba)
 
     print()
     print("Overlap")
@@ -250,7 +245,7 @@ if __name__ == "__main__":
             word_stop_inx = word_start_inx + min_overlap
             print(i, word[word_start_inx:word_stop_inx])
         print()
-    # exit()
+    exit()
 
     print()
     print("Large Input Array")
