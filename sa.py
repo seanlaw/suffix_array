@@ -182,12 +182,15 @@ def get_dtype(n):
     return dtype
 
 
-def get_overlaps(x, min_count=2, max_chunk=1000):
+def get_overlaps(x, min_count=2, max_chunk=10):
+    """
+    max_chunk must be >= 2
+    """
 
-    a = np.unique(x[x >= 2])  # np.arange(2, x.max()+1)
+    a = np.arange(2, x.max()+1)
 
     f = []    
-    for i in range(0, len(a), max_chunk): 
+    for i in range(0, len(a), max_chunk):
         ai = a[i:i + max_chunk]
 
         b = (x >= ai[:, None])
@@ -204,7 +207,6 @@ def get_overlaps(x, min_count=2, max_chunk=1000):
 
         f.append(np.hstack([c[:,0][e[:,0, None]], c[:,1][e]]))
 
-    # f = np.hstack([c[:, 0][e[:, 0, None]], c[:, 1][e]])
     f = np.concatenate(f)
 
     f[:, 2] += 1
