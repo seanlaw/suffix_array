@@ -182,22 +182,30 @@ def get_dtype(n):
     return dtype
 
 
-def get_overlaps(x, min_count=2):
+def get_overlaps(x, min_count=2, max_chunk=1000):
+
     a = np.unique(x[x >= 2])  # np.arange(2, x.max()+1)
 
-    b = x >= a[:, None]
+    f = []    
+    for i in range(0, len(a), max_chunk): 
+        ai = a[i:i + max_chunk]
 
-    c = np.argwhere(b)
-    c[:, 0] = a[c[:, 0]]
-    c = np.pad(c, ((1, 1), (0, 0)), "symmetric")
+        b = (x >= ai[:, None])
 
-    d = np.where(np.diff(c[:, 1]) != 1)[0]
+        c = np.argwhere(b)
+        c[:, 0] = a[c[:, 0]]
+        c = np.pad(c, ((1, 1), (0, 0)), "symmetric")
 
-    e = as_strided(d, shape=(len(d) - 1, 2), strides=d.strides*2).copy()
-    e = e[(np.diff(e, axis=1) >= min_count-1).flatten()]
-    e[:, 0] = e[:, 0] + 1
+        d = np.where(np.diff(c[:, 1]) != 1)[0]
 
-    f = np.hstack([c[:, 0][e[:, 0, None]], c[:, 1][e]])
+        e = as_strided(d, shape=(len(d) - 1, 2), strides=d.strides*2).copy()
+        e = e[(np.diff(e, axis=1) >= min_count-1).flatten()]
+        e[:, 0] = e[:, 0] + 1
+
+        f.append(np.hstack([c[:,0][e[:,0, None]], c[:,1][e]]))
+
+    # f = np.hstack([c[:, 0][e[:, 0, None]], c[:, 1][e]])
+    f = np.concatenate(f)
 
     f[:, 2] += 1
 
