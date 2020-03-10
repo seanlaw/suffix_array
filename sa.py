@@ -182,13 +182,13 @@ def get_dtype(n):
     return dtype
 
 
-def get_overlaps(x):
+def get_overlaps(x, step=1):
 
     # a = np.arange(2, x.max()+1)
     a = np.unique(x[x>=2])
 
     f = []
-    for i in range(0, len(a)):
+    for i in range(0, len(a), step):
         ai = a[i:i + step]
         c = np.argwhere(x >= ai[:, None])
         c[:,0] = ai[c[:,0]]
