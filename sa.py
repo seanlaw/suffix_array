@@ -7,6 +7,7 @@ import numpy as np
 import time
 import numba
 from numpy.lib.stride_tricks import as_strided
+import pandas as pd
 
 
 @numba.njit(fastmath=True)
@@ -133,11 +134,7 @@ def kasai_numba(s, sa):
             k = 0
         else:
             j = pos[sa[i] + 1]
-            while (
-                i + k < n
-                and j + k < n
-                and s[i + k] == s[j + k]
-            ):
+            while i + k < n and j + k < n and s[i + k] == s[j + k]:
                 k = k + 1
             lcp[sa[i]] = k
             if k > 0:
@@ -185,28 +182,57 @@ def get_dtype(n):
 def get_overlaps(x, step=1):
 
     # a = np.arange(2, x.max()+1)
-    a = np.unique(x[x>=2])
+    a = np.unique(x[x >= 2])
 
     f = []
     for i in range(0, len(a), step):
-        ai = a[i:i + step]
+        ai = a[i: i + step]
         c = np.argwhere(x >= ai[:, None])
-        c[:,0] = ai[c[:,0]]
-        c =  np.pad(c, ((1,1), (0,0)), 'symmetric')
+        c[:, 0] = ai[c[:, 0]]
+        c = np.pad(c, ((1, 1), (0, 0)), "symmetric")
 
-        d = np.where(np.diff(c[:,1]) !=1)[0]
+        d = np.where(np.diff(c[:, 1]) != 1)[0]
 
-        e = as_strided(d, shape=(len(d)-1, 2), strides=d.strides*2).copy()
+        e = as_strided(d, shape=(len(d) - 1, 2), strides=d.strides * 2).copy()
         # e = e[(np.diff(e, axis=1) > 1).flatten()]
-        e[:,0] = e[:,0] + 1 
+        e[:, 0] = e[:, 0] + 1
 
-        f.append(np.hstack([c[:,0][e[:,0, None]], c[:,1][e]]))
+        f.append(np.hstack([c[:, 0][e[:, 0, None]], c[:, 1][e]]))
 
     f = np.concatenate(f)
 
     f[:, 2] += 1
 
     return f
+
+
+def naive_overlap_summary_df(overlap_array, sarray, inp):
+    out = []
+    for steps, start_inx, stop_inx in overlap_array:
+        word_start_inx = sarray[start_inx]
+        word_stop_inx = word_start_inx + steps
+        out.append([steps,
+                    stop_inx - start_inx + 1,
+                    inp[word_start_inx:word_stop_inx]
+                    ])
+
+    return pd.DataFrame(out, columns=["steps", "count", "sequence"])
+
+
+def overlap_summary_df(overlap_array, sarray, inp):
+    out_df = pd.DataFrame(overlap_array[:, 0], columns=["steps"])
+    out_df["count"] = overlap_array[:, 2] - overlap_array[:, 1] + 1
+    inp_start_idx = sarray[overlap_array[:, 1]]
+    inp_stop_idx = inp_start_idx + out_df["steps"]
+    out_df["sequence"] = [
+        word[start:stop] for start, stop in zip(inp_start_idx, inp_stop_idx)
+    ]
+    return out_df
+
+
+def unique_overlap_df(overlap_array):
+    steps, count = np.unique(overlap_array[:, 0], return_counts=True)
+    return pd.DataFrame({"steps": steps, "count": count})
 
 
 if __name__ == "__main__":
@@ -244,12 +270,13 @@ if __name__ == "__main__":
 
     overlap_array = get_overlaps(lcp_array_numba)
     print(overlap_array)
-    for min_overlap, start_inx, stop_inx in overlap_array:
-        for i in range(start_inx, stop_inx + 1):
-            word_start_inx = sarray[i]
-            word_stop_inx = word_start_inx + min_overlap
-            print(i, word[word_start_inx:word_stop_inx])
-        print()
+    print()
+
+    print(overlap_summary_df(overlap_array, sarray, word))
+    print()
+    
+    print(unique_overlap_df(overlap_array))
+    print()
     exit()
 
     print()
