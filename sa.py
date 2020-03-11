@@ -235,6 +235,12 @@ def unique_overlap_df(overlap_array):
     return pd.DataFrame({"steps": steps, "count": count})
 
 
+def filter_top(overlap_df, k=10, sort_col='count', group_col='steps'):
+    return overlap_df.sort_values(sort_col, ascending=False) \
+                     .groupby(group_col) \
+                     .head(k)
+
+
 if __name__ == "__main__":
     word = "one$banana$phone$"
     word = "a$banana$and$a$bandana$"
