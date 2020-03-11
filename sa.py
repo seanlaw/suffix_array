@@ -225,7 +225,7 @@ def overlap_summary_df(overlap_array, sarray, inp):
     inp_start_idx = sarray[overlap_array[:, 1]]
     inp_stop_idx = inp_start_idx + out_df["steps"]
     out_df["sequence"] = [
-        word[start:stop] for start, stop in zip(inp_start_idx, inp_stop_idx)
+        inp[start:stop] for start, stop in zip(inp_start_idx, inp_stop_idx)
     ]
     return out_df
 
@@ -274,7 +274,7 @@ if __name__ == "__main__":
 
     print(overlap_summary_df(overlap_array, sarray, word))
     print()
-    
+
     print(unique_overlap_df(overlap_array))
     print()
     exit()
